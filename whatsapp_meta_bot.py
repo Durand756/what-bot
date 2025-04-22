@@ -1,4 +1,4 @@
-# whatsapp_meta_bot.py
+# main.py
 import os
 import inspect
 import requests
@@ -193,11 +193,14 @@ def verify_webhook():
     token = request.args.get('hub.verify_token')
     challenge = request.args.get('hub.challenge')
     
+    logger.info(f"Vérification du webhook - Mode: {mode}, Token: {token}, Challenge: {challenge}")
+    
     if mode and token:
         if mode == 'subscribe' and token == META_VERIFY_TOKEN:
             logger.info("Webhook vérifié avec succès")
             return challenge, 200
         else:
+            logger.error(f"Échec de vérification. Token reçu: {token}, attendu: {META_VERIFY_TOKEN}")
             return "Verification failed", 403
     return "Hello World", 200
 
@@ -205,6 +208,7 @@ def verify_webhook():
 def webhook():
     """Endpoint pour recevoir les messages WhatsApp via l'API Meta"""
     data = request.json
+    logger.info(f"Données reçues sur webhook: {data}")
     
     try:
         if data.get('object'):
@@ -229,12 +233,19 @@ def webhook():
     except Exception as e:
         logger.error(f"Erreur dans le webhook: {e}")
     
-    return jsonify({"status": "error"}), 400
+    return jsonify({"status": "received"}), 200
 
 @app.route('/status', methods=['GET'])
 def status():
     """Endpoint pour vérifier l'état du service"""
-    return jsonify({"status": "online"})
+    return jsonify({
+        "status": "online",
+        "environment": {
+            "META_WHATSAPP_PHONE_ID": META_WHATSAPP_PHONE_ID is not None,
+            "META_WHATSAPP_TOKEN": META_WHATSAPP_TOKEN is not None,
+            "META_VERIFY_TOKEN": META_VERIFY_TOKEN is not None,
+        }
+    })
 
 @app.route('/', methods=['GET'])
 def health_check():
